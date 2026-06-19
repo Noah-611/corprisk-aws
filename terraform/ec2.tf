@@ -30,6 +30,9 @@ resource "aws_launch_template" "app" {
     OPEN_DART_API_KEY=${var.opendart_api_key}
     DATABASE_URL=mysql+pymysql://${var.db_username}:${var.db_password}@${aws_db_instance.mysql.address}:3306/corprisk
     ENVEOF
+    
+    # Warm up OpenDART corp code cache before starting the application
+    python -c "from app.dart_client import get_corp_code_list; get_corp_code_list(); print('OpenDART corp code cache warmed up')" || true
 
     cat > /etc/systemd/system/corprisk.service <<SERVICEEOF
     [Unit]
