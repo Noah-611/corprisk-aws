@@ -1,0 +1,6 @@
+name_prefix      = "corprisk"
+app_repo_url     = "https://github.com/YOUR_GITHUB_ID/corprisk-aws.git"
+opendart_api_key = "your-opendart-api-key"
+db_username      = "admin"
+db_password      = "your-db-password"
+app_port         = 8000

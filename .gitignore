@@ -6,3 +6,12 @@ __pycache__/
 .env.*
 data/corp_codes.json
 corprisk.db
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+terraform/crash.log
+terraform/crash.*.log
+terraform/.terraform.lock.hcl
