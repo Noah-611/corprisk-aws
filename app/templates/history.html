@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>CorpRisk - 분석 이력</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>최근 분석 이력</h1>
+            <p class="info-text">
+                사용자가 분석한 기업 재무 리스크 결과를 DB에서 조회한 화면입니다.
+            </p>
+
+            {% if results %}
+                <table class="ratio-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>기업명</th>
+                            <th>종목코드</th>
+                            <th>연도</th>
+                            <th>리스크 등급</th>
+                            <th>리스크 점수</th>
+                            <th>데이터 출처</th>
+                            <th>분석 시간</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in results %}
+                        <tr>
+                            <td>{{ item.id }}</td>
+                            <td>{{ item.company_name }}</td>
+                            <td>{{ item.stock_code }}</td>
+                            <td>{{ item.year }}</td>
+                            <td>{{ item.risk_grade }}</td>
+                            <td>{{ item.risk_score }}</td>
+                            <td>{{ item.data_source }}</td>
+                            <td>{{ item.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>아직 저장된 분석 이력이 없습니다.</p>
+            {% endif %}
+
+            <a class="back-link" href="/">← 홈으로 돌아가기</a>
+        </div>
+    </div>
+</body>
+</html>

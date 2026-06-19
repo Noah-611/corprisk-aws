@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>CorpRisk - 분석 결과</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>CorpRisk 분석 결과</h1>
+
+            {% if result %}
+                <h2>{{ result.company_name }} ({{ result.stock_code }})</h2>
+                <p class="info-text">분석 연도: {{ result.year }}</p>
+                <p class="info-text">데이터 출처: {{ result.data_source }}</p>
+                <p class="info-text">
+                이 분석은 OpenDART API에서 조회한 재무제표 데이터를 기반으로 계산되었습니다.
+                </p>
+                <h3>재무 요약</h3>
+                <div class="summary-grid">
+                    <div class="metric">
+                        <div class="metric-title">매출액</div>
+                        <div class="metric-value">{{ "{:,}".format(result.revenue) }} 원</div>
+                    </div>
+
+                    <div class="metric">
+                        <div class="metric-title">영업이익</div>
+                        <div class="metric-value">{{ "{:,}".format(result.operating_income) }} 원</div>
+                    </div>
+
+                    <div class="metric">
+                        <div class="metric-title">당기순이익</div>
+                        <div class="metric-value">{{ "{:,}".format(result.net_income) }} 원</div>
+                    </div>
+                </div>
+
+                <h3>재무 비율</h3>
+                <table class="ratio-table">
+                    <thead>
+                        <tr>
+                            <th>지표</th>
+                            <th>값</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>부채비율</td>
+                            <td>{{ result.debt_ratio }}%</td>
+                            <td>자기자본 대비 부채 규모를 나타냅니다.</td>
+                        </tr>
+                        <tr>
+                            <td>영업이익률</td>
+                            <td>{{ result.operating_margin }}%</td>
+                            <td>매출 대비 영업이익의 비율입니다.</td>
+                        </tr>
+                        <tr>
+                            <td>순이익률</td>
+                            <td>{{ result.net_margin }}%</td>
+                            <td>매출 대비 최종 순이익의 비율입니다.</td>
+                        </tr>
+                        <tr>
+                            <td>유동비율</td>
+                            <td>{{ result.current_ratio }}%</td>
+                            <td>단기 부채를 갚을 수 있는 능력을 나타냅니다.</td>
+                        </tr>
+                        <tr>
+                            <td>자기자본비율</td>
+                            <td>{{ result.equity_ratio }}%</td>
+                            <td>총자산 중 자기자본이 차지하는 비율입니다.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>리스크 분석</h3>
+                <div class="risk-box">
+                    <p>리스크 점수</p>
+                    <div class="risk-grade">{{ result.risk_score }}점 / {{ result.risk_grade }}</div>
+
+                    <h4>분석 사유</h4>
+                    <ul>
+                        {% for reason in result.risk_reasons %}
+                        <li>{{ reason }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+            {% else %}
+                <p>기업 데이터를 찾을 수 없습니다.</p>
+            {% endif %}
+
+            <a class="back-link" href="/">← 홈으로 돌아가기</a>
+            <br>
+            <a class="back-link" href="/history">최근 분석 이력 보기 →</a>
+        </div>
+    </div>
+</body>
+</html>
