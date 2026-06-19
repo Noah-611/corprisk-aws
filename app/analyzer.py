@@ -1,6 +1,11 @@
 import pandas as pd
-
-from app.dart_client import find_corp_by_stock_code, convert_dart_to_financial_data
+import re
+from app.dart_client import (
+    find_corp_by_stock_code,
+    get_financial_statement,
+    convert_dart_to_financial_data,
+    search_corporations,
+)
 
 
 COMPANY_MAPPINGS = [
@@ -79,40 +84,103 @@ def get_sample_financial_data(company_name: str):
         "data_source": "샘플 CSV 데이터",
     }
 
+def extract_stock_code(keyword: str):
+    """
+    '삼성전자 (005930)' 또는 '005930'에서 6자리 종목코드를 추출한다.
+    """
+    if not keyword:
+        return None
+
+    match = re.search(r"(\d{6})", keyword)
+
+    if match:
+        return match.group(1)
+
+    return None
+
+
+def search_companies(query: str, limit: int = 20):
+    """
+    화면 자동완성용 기업 검색 함수.
+    """
+    return search_corporations(query, limit)
+
+
+def find_company_by_query(keyword: str):
+    """
+    기업명 또는 종목코드 입력값으로 OpenDART 기업 정보를 찾는다.
+    """
+    keyword = (keyword or "").strip()
+
+    if not keyword:
+        return None
+
+    stock_code = extract_stock_code(keyword)
+
+    if stock_code:
+        return find_corp_by_stock_code(stock_code)
+
+    candidates = search_corporations(keyword, limit=30)
+
+    if not candidates:
+        return None
+
+    for item in candidates:
+        if item["corp_name"] == keyword:
+            return item
+
+    return candidates[0]
 
 def get_financial_data(company_name: str):
     """
-    화면에서 선택한 기업명을 종목코드로 변환한 뒤,
-    OpenDART API에서 실제 재무제표 데이터를 가져옵니다.
-    실패하면 샘플 CSV 데이터로 대체합니다.
+    입력된 기업명 또는 종목코드를 기준으로 OpenDART에서 재무 데이터를 조회한다.
+
+    지원 입력 예시:
+    - 삼성전자
+    - 005930
+    - 삼성전자 (005930)
+    - SK하이닉스
     """
-    mapping = find_company_mapping(company_name)
 
-    if mapping is None:
-        return get_sample_financial_data(company_name)
+    company = find_company_by_query(company_name)
 
-    display_name = mapping["display_name"]
-    stock_code = mapping["stock_code"]
+    if company is None:
+        print(f"[WARN] 기업을 찾을 수 없습니다: {company_name}")
+        return None
 
-    try:
-        corp = find_corp_by_stock_code(stock_code)
+    corp_code = company.get("corp_code")
+    stock_code = company.get("stock_code")
+    display_name = company.get("corp_name")
 
-        if corp is None:
-            raise ValueError(f"OpenDART에서 종목코드를 찾을 수 없습니다: {stock_code}")
+    print(f"[INFO] OpenDART 조회 대상: {display_name} ({stock_code}) / corp_code={corp_code}")
 
-        data = convert_dart_to_financial_data(corp["corp_code"], "2023")
+    dart_data = get_financial_statement(
+        corp_code,
+        "2023",
+        "11011"
+    )
 
-        data["company_name"] = display_name
-        data["stock_code"] = stock_code
-        data["data_source"] = "OpenDART API"
+    if dart_data is None:
+        print(f"[WARN] OpenDART 재무제표 조회 실패: {display_name} ({stock_code})")
+        return None
 
-        return data
+    financial_data = convert_dart_to_financial_data(
+        dart_data,
+        display_name,
+        stock_code,
+        "2023"
+    )
 
-    except Exception as e:
-        print("OpenDART API 호출 실패:", e)
-        print("샘플 CSV 데이터로 대체합니다.")
-        return get_sample_financial_data(company_name)
+    if financial_data is None:
+        print(f"[WARN] OpenDART 재무 데이터 변환 실패: {display_name} ({stock_code})")
+        return None
 
+    financial_data["company_name"] = display_name
+    financial_data["stock_code"] = stock_code
+    financial_data["year"] = "2023"
+    financial_data["data_source"] = "OpenDART API"
+
+    return financial_data
 
 def safe_ratio(numerator, denominator):
     if denominator == 0:
@@ -188,3 +256,4 @@ def calculate_financial_ratios(company_name: str):
         "risk_reasons": risk_reasons,
         "data_source": data.get("data_source", "알 수 없음"),
     }
+

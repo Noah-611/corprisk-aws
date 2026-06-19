@@ -211,6 +211,45 @@ def convert_dart_to_financial_data(corp_code: str, year: str = "2023"):
 
     return financial_data
 
+def search_corporations(query: str, limit: int = 20):
+    """
+    OpenDART corpCode 목록에서 기업명 또는 종목코드로 상장기업을 검색한다.
+    stock_code가 있는 기업만 대상으로 한다.
+    """
+    query = (query or "").strip()
+
+    if not query:
+        return []
+
+    corp_list = get_corp_code_list()
+    results = []
+
+    for corp in corp_list:
+        corp_name = corp.get("corp_name", "").strip()
+        corp_code = corp.get("corp_code", "").strip()
+        stock_code = corp.get("stock_code", "").strip()
+
+        if not stock_code:
+            continue
+
+        if query in corp_name or query in stock_code:
+            results.append({
+                "corp_name": corp_name,
+                "corp_code": corp_code,
+                "stock_code": stock_code,
+                "display_name": f"{corp_name} ({stock_code})",
+            })
+
+    results.sort(
+        key=lambda item: (
+            0 if item["stock_code"] == query else
+            1 if item["corp_name"].startswith(query) else
+            2,
+            item["corp_name"]
+        )
+    )
+
+    return results[:limit]
 
 if __name__ == "__main__":
     stock_code = "035720"

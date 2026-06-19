@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
-from app.analyzer import get_company_names, calculate_financial_ratios
+from app.analyzer import calculate_financial_ratios, search_companies
 from app.database import (
     init_db,
     save_analysis_result,
@@ -28,14 +28,10 @@ templates = Jinja2Templates(directory="app/templates")
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    companies = get_company_names()
-
     return templates.TemplateResponse(
         request,
         "index.html",
-        {
-            "companies": companies,
-        },
+        {},
     )
 
 
@@ -67,6 +63,18 @@ def history(request: Request):
         },
     )
 
+
+@app.get("/api/companies")
+def companies_api(q: str = "", limit: int = 20):
+    companies = search_companies(q, limit)
+
+    return {
+        "success": True,
+        "count": len(companies),
+        "data": companies,
+    }
+
+
 @app.get("/api/analysis")
 def analysis_api(company_name: str):
     result = calculate_financial_ratios(company_name)
@@ -78,6 +86,7 @@ def analysis_api(company_name: str):
         "success": result is not None,
         "data": result,
     }
+
 
 @app.get("/api/history")
 def history_api():
@@ -102,6 +111,7 @@ def history_api():
         "count": len(data),
         "data": data,
     }
+
 
 @app.get("/health")
 def health_check():

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -6,41 +7,132 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="card">
+    <main class="container">
+        <section class="hero">
             <h1>CorpRisk</h1>
-            <h2>기업 재무 리스크 분석 대시보드</h2>
-
-            <p>
-                기업을 선택하면 재무제표 데이터를 기반으로 부채비율, 수익성, 유동성 등을 계산하여
-                재무 리스크를 분석합니다.
+            <p class="subtitle">
+                OpenDART 기반 기업 재무 리스크 분석 웹서비스
             </p>
-
-            <form action="/analyze" method="post">
-                <label for="company_name">분석할 기업 선택</label>
-
-                <select name="company_name" id="company_name">
-                    {% for company in companies %}
-                    <option value="{{ company }}">{{ company }}</option>
-                    {% endfor %}
-                </select>
-
-                <button type="submit">분석하기</button>
-            </form>
-            <a class="back-link" href="/history">최근 분석 이력 보기 →</a>
-        </div>
-
-        <div class="card">
-            <h3>프로젝트 개요</h3>
-            <p>
-                CorpRisk는 기업 재무 데이터를 기반으로 주요 재무비율을 계산하고,
-                기업의 재무 안정성과 위험도를 분석하는 AWS 기반 웹서비스입니다.
-            </p>
-
-            <p class="info-text">
-                선택한 상장기업의 종목코드를 기준으로 OpenDART API에서 실제 재무제표 데이터를 조회하고,
+            <p class="description">
+                기업명 또는 종목코드를 검색하면 OpenDART 재무제표 데이터를 조회하고,
                 주요 재무비율과 리스크 등급을 계산합니다.
+            </p>
+        </section>
+
+```
+    <section class="card">
+        <h2>기업 분석하기</h2>
+
+        <form action="/analyze" method="post" class="analysis-form">
+            <label for="companyInput">기업명 또는 종목코드 검색</label>
+
+            <div class="autocomplete-wrapper">
+                <input
+                    type="text"
+                    id="companyInput"
+                    name="company_name"
+                    placeholder="예: 삼성전자, 005930, SK하이닉스"
+                    autocomplete="off"
+                    required
+                >
+
+                <div id="companySuggestions" class="suggestions"></div>
+            </div>
+
+            <button type="submit">분석하기</button>
+        </form>
+
+        <p class="hint">
+            예시: 삼성, 005930, NAVER, SK하이닉스처럼 입력하면 관련 기업이 검색됩니다.
+        </p>
+
+        <div class="link-area">
+            <a href="/history">최근 분석 이력 보기 →</a>
         </div>
-    </div>
+    </section>
+
+    <section class="info-grid">
+        <div class="info-card">
+            <h3>데이터 수집</h3>
+            <p>OpenDART API에서 기업 재무제표 데이터를 조회합니다.</p>
+        </div>
+
+        <div class="info-card">
+            <h3>재무비율 계산</h3>
+            <p>부채비율, 유동비율, 영업이익률, 순이익률을 계산합니다.</p>
+        </div>
+
+        <div class="info-card">
+            <h3>리스크 등급화</h3>
+            <p>계산된 지표를 바탕으로 낮음, 중간, 높음 등급을 제공합니다.</p>
+        </div>
+    </section>
+</main>
+
+<script>
+    const companyInput = document.getElementById("companyInput");
+    const suggestionsBox = document.getElementById("companySuggestions");
+
+    let searchTimer = null;
+
+    companyInput.addEventListener("input", () => {
+        const query = companyInput.value.trim();
+
+        clearTimeout(searchTimer);
+
+        if (query.length < 1) {
+            suggestionsBox.innerHTML = "";
+            suggestionsBox.style.display = "none";
+            return;
+        }
+
+        searchTimer = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/companies?q=${encodeURIComponent(query)}&limit=10`);
+                const result = await response.json();
+
+                suggestionsBox.innerHTML = "";
+
+                if (!result.success || result.data.length === 0) {
+                    suggestionsBox.style.display = "none";
+                    return;
+                }
+
+                result.data.forEach((company) => {
+                    const item = document.createElement("div");
+                    item.className = "suggestion-item";
+
+                    item.innerHTML = `
+                        <span class="suggestion-name">${company.corp_name}</span>
+                        <span class="suggestion-code">${company.stock_code}</span>
+                    `;
+
+                    item.addEventListener("click", () => {
+                        companyInput.value = company.display_name;
+                        suggestionsBox.innerHTML = "";
+                        suggestionsBox.style.display = "none";
+                    });
+
+                    suggestionsBox.appendChild(item);
+                });
+
+                suggestionsBox.style.display = "block";
+            } catch (error) {
+                console.error("기업 검색 중 오류 발생:", error);
+                suggestionsBox.innerHTML = "";
+                suggestionsBox.style.display = "none";
+            }
+        }, 200);
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!event.target.closest(".autocomplete-wrapper")) {
+            suggestionsBox.innerHTML = "";
+            suggestionsBox.style.display = "none";
+        }
+    });
+</script>
+```
+
 </body>
 </html>
