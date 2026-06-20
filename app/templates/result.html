@@ -21,17 +21,17 @@
                 <div class="summary-grid">
                     <div class="metric">
                         <div class="metric-title">매출액</div>
-                        <div class="metric-value">{{ "{:,}".format(result.revenue) }} 원</div>
+                        <div class="metric-value">{{ result.revenue | eok }}</div>
                     </div>
 
                     <div class="metric">
                         <div class="metric-title">영업이익</div>
-                        <div class="metric-value">{{ "{:,}".format(result.operating_income) }} 원</div>
+                        <div class="metric-value">{{ result.operating_income | eok }}</div>
                     </div>
 
                     <div class="metric">
                         <div class="metric-title">당기순이익</div>
-                        <div class="metric-value">{{ "{:,}".format(result.net_income) }} 원</div>
+                        <div class="metric-value">{{ result.net_income | eok }}</div>
                     </div>
                 </div>
 

@@ -25,6 +25,25 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 templates = Jinja2Templates(directory="app/templates")
 
+def format_eok(value):
+    if value is None:
+        return "-"
+
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return "-"
+
+    eok = value / 100_000_000
+
+    if abs(eok) >= 1000:
+        return f"{eok:,.0f}억 원"
+    else:
+        return f"{eok:,.1f}억 원"
+
+
+templates.env.filters["eok"] = format_eok
+
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
