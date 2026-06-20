@@ -10,7 +10,9 @@ resource "aws_launch_template" "app" {
 
   user_data = base64encode(<<-EOF
     #!/bin/bash
-    set -e
+    set -euxo pipefail
+
+    exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
 
     dnf install -y git python3 python3-pip
 
@@ -49,6 +51,11 @@ resource "aws_launch_template" "app" {
     systemctl daemon-reload
     systemctl enable corprisk
     systemctl start corprisk
+
+    sleep 10
+    systemctl status corprisk --no-pager || true
+    curl -f http://127.0.0.1:${var.app_port}/health || journalctl -u corprisk --no-pager -n 100
+    
     # Warm up OpenDART corp code cache in background after starting the application
     cd /opt/corprisk/app
     nohup ./venv/bin/python -c "from app.dart_client import get_corp_code_list; get_corp_code_list(); print('OpenDART corp code cache warmed up')" > /var/log/corprisk-warmup.log 2>&1 &
