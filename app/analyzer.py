@@ -98,13 +98,67 @@ def extract_stock_code(keyword: str):
 
     return None
 
-
 def search_companies(query: str, limit: int = 20):
     """
     화면 자동완성용 기업 검색 함수.
     """
     return search_corporations(query, limit)
 
+def get_financial_data(company_name: str):
+    """
+    입력된 기업명 또는 종목코드를 기준으로 OpenDART에서 재무 데이터를 조회한다.
+
+    지원 입력 예시:
+    - 삼성전자
+    - 005930
+    - 삼성전자 (005930)
+    - SK하이닉스
+    """
+
+    company = find_company_by_query(company_name)
+
+    if company is None:
+        print(f"[WARN] 기업을 찾을 수 없습니다: {company_name}")
+        return None
+
+    corp_code = company.get("corp_code")
+    stock_code = company.get("stock_code")
+    display_name = company.get("corp_name")
+
+    print(f"[INFO] OpenDART 조회 대상: {display_name} ({stock_code}) / corp_code={corp_code}")
+
+    year_candidates = ["2024", "2023", "2022"]
+
+    for year in year_candidates:
+        try:
+            financial_data = convert_dart_to_financial_data(
+                corp_code,
+                year
+            )
+
+            if financial_data is None:
+                print(f"[WARN] OpenDART 재무 데이터 변환 실패: {display_name} ({stock_code}) / {year}")
+                continue
+
+            financial_data["company_name"] = display_name
+            financial_data["stock_code"] = stock_code
+            financial_data["year"] = year
+            financial_data["data_source"] = "OpenDART API"
+
+            print(f"[INFO] OpenDART 재무 데이터 조회 성공: {display_name} ({stock_code}) / {year}")
+
+            return financial_data
+
+        except ValueError as error:
+            print(f"[WARN] OpenDART 조회 실패: {display_name} ({stock_code}) / {year} / {error}")
+            continue
+
+        except Exception as error:
+            print(f"[ERROR] 재무 데이터 조회 중 오류: {display_name} ({stock_code}) / {year} / {error}")
+            continue
+
+    print(f"[WARN] 모든 연도에서 재무제표 조회 실패: {display_name} ({stock_code})")
+    return None
 
 def find_company_by_query(keyword: str):
     """
@@ -131,63 +185,12 @@ def find_company_by_query(keyword: str):
 
     return candidates[0]
 
-def get_financial_data(company_name: str):
-    """
-    입력된 기업명 또는 종목코드를 기준으로 OpenDART에서 재무 데이터를 조회한다.
-
-    지원 입력 예시:
-    - 삼성전자
-    - 005930
-    - 삼성전자 (005930)
-    - SK하이닉스
-    """
-
-    company = find_company_by_query(company_name)
-
-    if company is None:
-        print(f"[WARN] 기업을 찾을 수 없습니다: {company_name}")
-        return None
-
-    corp_code = company.get("corp_code")
-    stock_code = company.get("stock_code")
-    display_name = company.get("corp_name")
-
-    print(f"[INFO] OpenDART 조회 대상: {display_name} ({stock_code}) / corp_code={corp_code}")
-
-    dart_data = get_financial_statement(
-        corp_code,
-        "2023",
-        "11011"
-    )
-
-    if dart_data is None:
-        print(f"[WARN] OpenDART 재무제표 조회 실패: {display_name} ({stock_code})")
-        return None
-
-    financial_data = convert_dart_to_financial_data(
-        dart_data,
-        display_name,
-        stock_code,
-        "2023"
-    )
-
-    if financial_data is None:
-        print(f"[WARN] OpenDART 재무 데이터 변환 실패: {display_name} ({stock_code})")
-        return None
-
-    financial_data["company_name"] = display_name
-    financial_data["stock_code"] = stock_code
-    financial_data["year"] = "2023"
-    financial_data["data_source"] = "OpenDART API"
-
-    return financial_data
 
 def safe_ratio(numerator, denominator):
     if denominator == 0:
         return 0
 
     return numerator / denominator * 100
-
 
 def calculate_financial_ratios(company_name: str):
     data = get_financial_data(company_name)
