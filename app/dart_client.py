@@ -212,42 +212,72 @@ def convert_dart_to_financial_data(corp_code: str, year: str = "2023"):
     return financial_data
 
 def search_corporations(query: str, limit: int = 20):
-    """
-    OpenDART corpCode 목록에서 기업명 또는 종목코드로 상장기업을 검색한다.
-    stock_code가 있는 기업만 대상으로 한다.
-    """
     query = (query or "").strip()
 
     if not query:
         return []
 
+    query_norm = query.casefold()
     corp_list = get_corp_code_list()
+
     results = []
+    seen = set()
 
     for corp in corp_list:
-        corp_name = corp.get("corp_name", "").strip()
-        corp_code = corp.get("corp_code", "").strip()
-        stock_code = corp.get("stock_code", "").strip()
+        corp_name = (corp.get("corp_name") or "").strip()
+        corp_code = (corp.get("corp_code") or "").strip()
+        stock_code = (corp.get("stock_code") or "").strip()
 
-        if not stock_code:
+        # 상장회사만 대상으로 사용
+        if not stock_code or not stock_code.isdigit() or len(stock_code) != 6:
             continue
 
-        if query in corp_name or query in stock_code:
-            results.append({
-                "corp_name": corp_name,
-                "corp_code": corp_code,
-                "stock_code": stock_code,
-                "display_name": f"{corp_name} ({stock_code})",
-            })
+        # 스팩 회사 제외
+        if any(keyword in corp_name for keyword in ["스팩", "기업인수목적", "인수목적"]):
+            continue
 
-    results.sort(
-        key=lambda item: (
-            0 if item["stock_code"] == query else
-            1 if item["corp_name"].startswith(query) else
-            2,
-            item["corp_name"]
-        )
-    )
+        corp_name_norm = corp_name.casefold()
+        stock_code_norm = stock_code.casefold()
+        corp_code_norm = corp_code.casefold()
+
+        if (
+            query_norm in corp_name_norm
+            or query_norm in stock_code_norm
+            or query_norm in corp_code_norm
+        ):
+            key = stock_code or corp_code
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            # 정렬 우선순위
+            if stock_code_norm == query_norm:
+                score = 0
+            elif corp_name_norm == query_norm:
+                score = 1
+            elif corp_name_norm.startswith(query_norm):
+                score = 2
+            elif stock_code_norm.startswith(query_norm):
+                score = 3
+            else:
+                score = 4
+
+            results.append(
+                {
+                    "corp_code": corp_code,
+                    "corp_name": corp_name,
+                    "stock_code": stock_code,
+                    "display_name": f"{corp_name} ({stock_code})",
+                    "_score": score,
+                }
+            )
+
+    results.sort(key=lambda item: (item["_score"], item["corp_name"]))
+
+    for item in results:
+        item.pop("_score", None)
 
     return results[:limit]
 

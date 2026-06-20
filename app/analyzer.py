@@ -104,7 +104,7 @@ def search_companies(query: str, limit: int = 20):
     """
     return search_corporations(query, limit)
 
-def get_financial_data(company_name: str):
+def get_financial_data(company_name: str, selected_year: str | None = None):
     """
     입력된 기업명 또는 종목코드를 기준으로 OpenDART에서 재무 데이터를 조회한다.
 
@@ -127,7 +127,10 @@ def get_financial_data(company_name: str):
 
     print(f"[INFO] OpenDART 조회 대상: {display_name} ({stock_code}) / corp_code={corp_code}")
 
-    year_candidates = ["2024", "2023", "2022"]
+    if selected_year:
+        year_candidates = [selected_year]
+    else:
+        year_candidates = ["2025", "2024", "2023", "2022", "2021"]
 
     for year in year_candidates:
         try:
@@ -192,8 +195,8 @@ def safe_ratio(numerator, denominator):
 
     return numerator / denominator * 100
 
-def calculate_financial_ratios(company_name: str):
-    data = get_financial_data(company_name)
+def calculate_financial_ratios(company_name: str, selected_year: str | None = None):
+    data = get_financial_data(company_name, selected_year)
 
     if data is None:
         return None
@@ -260,3 +263,131 @@ def calculate_financial_ratios(company_name: str):
         "data_source": data.get("data_source", "알 수 없음"),
     }
 
+def calculate_growth_rate(current_value, previous_value):
+    try:
+        current_value = float(current_value or 0)
+        previous_value = float(previous_value or 0)
+
+        if previous_value == 0:
+            return None
+
+        return round(((current_value - previous_value) / abs(previous_value)) * 100, 2)
+
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+def safe_float(value):
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def calculate_ratio_data_from_financial_data(financial_data: dict):
+    revenue = safe_float(financial_data.get("revenue"))
+    operating_income = safe_float(financial_data.get("operating_income"))
+    net_income = safe_float(financial_data.get("net_income"))
+
+    total_assets = safe_float(financial_data.get("total_assets"))
+    total_liabilities = safe_float(financial_data.get("total_liabilities"))
+    total_equity = safe_float(financial_data.get("total_equity"))
+
+    current_assets = safe_float(financial_data.get("current_assets"))
+    current_liabilities = safe_float(financial_data.get("current_liabilities"))
+
+    debt_ratio = round((total_liabilities / total_equity) * 100, 2) if total_equity else 0
+    current_ratio = round((current_assets / current_liabilities) * 100, 2) if current_liabilities else 0
+    operating_margin = round((operating_income / revenue) * 100, 2) if revenue else 0
+    net_margin = round((net_income / revenue) * 100, 2) if revenue else 0
+    equity_ratio = round((total_equity / total_assets) * 100, 2) if total_assets else 0
+
+    return {
+        "debt_ratio": debt_ratio,
+        "current_ratio": current_ratio,
+        "operating_margin": operating_margin,
+        "net_margin": net_margin,
+        "equity_ratio": equity_ratio,
+    }
+
+def get_financial_history(company_name: str, years=None):
+    if years is None:
+        years = ["2021", "2022", "2023", "2024", "2025"]
+
+    company = find_company_by_query(company_name)
+
+    if company is None:
+        print(f"[WARN] 과거 재무 데이터 조회 실패: 기업을 찾을 수 없습니다. {company_name}")
+        return []
+
+    corp_code = company.get("corp_code")
+    stock_code = company.get("stock_code")
+    display_name = company.get("corp_name")
+
+    history = []
+
+    for year in years:
+        try:
+            financial_data = convert_dart_to_financial_data(corp_code, year)
+
+            if not financial_data:
+                continue
+
+            financial_data["company_name"] = display_name
+            financial_data["stock_code"] = stock_code
+            financial_data["year"] = year
+            financial_data["data_source"] = "OpenDART API"
+
+            ratio_data = calculate_ratio_data_from_financial_data(financial_data)
+
+            row = {
+                "year": year,
+
+                # 금액 지표
+                "revenue": financial_data.get("revenue", 0),
+                "operating_income": financial_data.get("operating_income", 0),
+                "net_income": financial_data.get("net_income", 0),
+                "total_assets": financial_data.get("total_assets", 0),
+                "total_liabilities": financial_data.get("total_liabilities", 0),
+                "total_equity": financial_data.get("total_equity", 0),
+                "current_assets": financial_data.get("current_assets", 0),
+                "current_liabilities": financial_data.get("current_liabilities", 0),
+
+                # 비율 지표
+                "debt_ratio": ratio_data.get("debt_ratio"),
+                "current_ratio": ratio_data.get("current_ratio"),
+                "operating_margin": ratio_data.get("operating_margin"),
+                "net_margin": ratio_data.get("net_margin"),
+                "equity_ratio": ratio_data.get("equity_ratio"),
+            }
+
+            history.append(row)
+
+        except Exception as error:
+            print(f"[WARN] {display_name} {year}년 과거 데이터 조회 실패: {error}")
+            continue
+
+    history.sort(key=lambda item: item["year"])
+
+    for index, row in enumerate(history):
+        if index == 0:
+            row["revenue_growth"] = None
+            row["operating_income_growth"] = None
+            row["net_income_growth"] = None
+            continue
+
+        previous = history[index - 1]
+
+        row["revenue_growth"] = calculate_growth_rate(
+            row.get("revenue"),
+            previous.get("revenue"),
+        )
+        row["operating_income_growth"] = calculate_growth_rate(
+            row.get("operating_income"),
+            previous.get("operating_income"),
+        )
+        row["net_income_growth"] = calculate_growth_rate(
+            row.get("net_income"),
+            previous.get("net_income"),
+        )
+
+    return history

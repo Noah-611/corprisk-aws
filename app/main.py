@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
-from app.analyzer import calculate_financial_ratios, search_companies
+from app.analyzer import calculate_financial_ratios, search_companies, get_financial_history
 from app.database import (
     init_db,
     save_analysis_result,
@@ -55,20 +55,30 @@ def home(request: Request):
 
 
 @app.post("/analyze", response_class=HTMLResponse)
-def analyze(request: Request, company_name: str = Form(...)):
-    result = calculate_financial_ratios(company_name)
+def analyze(
+    request: Request,
+    company_name: str = Form(...),
+    year: str | None = Form(None),
+):
+    result = calculate_financial_ratios(company_name, year)
+    history_data = []
 
     if result is not None:
         save_analysis_result(result)
+        history_data = get_financial_history(company_name)
+
+    available_years = ["2025", "2024", "2023", "2022", "2021"]
 
     return templates.TemplateResponse(
         request,
         "result.html",
         {
             "result": result,
+            "history_data": history_data,
+            "available_years": available_years,
+            "selected_year": year,
         },
     )
-
 
 @app.get("/history", response_class=HTMLResponse)
 def history(request: Request):
