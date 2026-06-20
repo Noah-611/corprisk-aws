@@ -105,7 +105,7 @@ def search_companies(query: str, limit: int = 20):
     """
     return search_corporations(query, limit)
 
-def get_financial_data(company_name: str, selected_year: Optional[str] | None = None):
+def get_financial_data(company_name: str, selected_year: Optional[str] = None):
     """
     입력된 기업명 또는 종목코드를 기준으로 OpenDART에서 재무 데이터를 조회한다.
 
@@ -196,7 +196,7 @@ def safe_ratio(numerator, denominator):
 
     return numerator / denominator * 100
 
-def calculate_financial_ratios(company_name: str, selected_year: Optional[str] | None = None):
+def calculate_financial_ratios(company_name: str, selected_year: Optional[str] = None):
     data = get_financial_data(company_name, selected_year)
 
     if data is None:

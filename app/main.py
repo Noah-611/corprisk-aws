@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-
+from typing import Optional
 from app.analyzer import calculate_financial_ratios, search_companies, get_financial_history
 from app.database import (
     init_db,
@@ -58,7 +58,7 @@ def home(request: Request):
 def analyze(
     request: Request,
     company_name: str = Form(...),
-    year: str | None = Form(None),
+    year: Optional[str] = Form(None),
 ):
     result = calculate_financial_ratios(company_name, year)
     history_data = []
