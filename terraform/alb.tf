@@ -11,10 +11,11 @@ resource "aws_lb" "app_alb" {
 }
 
 resource "aws_lb_target_group" "app_tg" {
-  name     = "${var.name_prefix}-tg"
-  port     = var.app_port
-  protocol = "HTTP"
-  vpc_id   = data.aws_vpc.default.id
+  name                 = "${var.name_prefix}-tg"
+  port                 = var.app_port
+  protocol             = "HTTP"
+  vpc_id               = data.aws_vpc.default.id
+  deregistration_delay = 30
 
   health_check {
     path                = "/health"

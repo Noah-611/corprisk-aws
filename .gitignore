@@ -1,5 +1,5 @@
 venv/
-.env
+.envclear
 __pycache__/
 *.pyc
 .DS_Store
@@ -14,4 +14,6 @@ terraform/*.tfstate.*
 terraform/terraform.tfvars
 terraform/crash.log
 terraform/crash.*.log
+terraform/.terraform.lock.hcl.env
+.env
 terraform/.terraform.lock.hcl

@@ -12,13 +12,12 @@ resource "aws_launch_template" "app" {
     #!/bin/bash
     set -e
 
-    dnf update -y
     dnf install -y git python3 python3-pip
 
     mkdir -p /opt/corprisk
     cd /opt/corprisk
 
-    git clone ${var.app_repo_url} app
+    git clone --depth 1 ${var.app_repo_url} app
     cd app
 
     python3 -m venv venv
@@ -31,9 +30,6 @@ resource "aws_launch_template" "app" {
     DATABASE_URL=mysql+pymysql://${var.db_username}:${var.db_password}@${aws_db_instance.mysql.address}:3306/corprisk
     ENVEOF
     
-    # Warm up OpenDART corp code cache before starting the application
-    python -c "from app.dart_client import get_corp_code_list; get_corp_code_list(); print('OpenDART corp code cache warmed up')" || true
-
     cat > /etc/systemd/system/corprisk.service <<SERVICEEOF
     [Unit]
     Description=CorpRisk FastAPI Application
@@ -53,6 +49,9 @@ resource "aws_launch_template" "app" {
     systemctl daemon-reload
     systemctl enable corprisk
     systemctl start corprisk
+    # Warm up OpenDART corp code cache in background after starting the application
+    cd /opt/corprisk/app
+    nohup ./venv/bin/python -c "from app.dart_client import get_corp_code_list; get_corp_code_list(); print('OpenDART corp code cache warmed up')" > /var/log/corprisk-warmup.log 2>&1 &
   EOF
   )
 
